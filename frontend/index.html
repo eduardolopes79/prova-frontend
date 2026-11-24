@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Minhas Tarefas</title>
+
+  <style>
+    :root {
+      --bg: #f4f6fb;
+      --card: #ffffff;
+      --text: #1f2937;
+      --muted: #5b6475;
+      --primary: #4f46e5;
+      --primary-dark: #4338ca;
+      --danger: #b91c1c;
+      --danger-bg: #fef2f2;
+      --success: #15803d;
+      --border: #d9deea;
+      --radius: 12px;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+    }
+    .app { max-width: 640px; margin: 0 auto; padding: 24px 16px 64px; }
+
+    header h1 { margin: 0; font-size: 1.75rem; }
+    .subtitle { margin: 4px 0 0; color: var(--muted); }
+    .status-line {
+      min-height: 24px; margin: 12px 0 0; font-size: .9rem; color: var(--muted);
+      display: flex; align-items: center; gap: 8px;
+    }
+
+    .card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 16px; margin-top: 16px;
+      box-shadow: 0 1px 2px rgba(16, 24, 40, .04);
+    }
+
+    /* Formulário */
+    .add-form label { display: block; font-weight: 600; margin-bottom: 6px; }
+    .add-row { display: flex; gap: 8px; }
+    input[type="text"] {
+      flex: 1; min-width: 0; padding: 10px 12px; font-size: 1rem;
+      border: 1px solid var(--border); border-radius: 8px; background: #fff; color: var(--text);
+    }
+    input[type="text"].invalid { border-color: var(--danger); background: var(--danger-bg); }
+    .field-hint { margin: 6px 0 0; font-size: .85rem; color: var(--muted); }
+    .field-error { margin: 6px 0 0; font-size: .9rem; color: var(--danger); font-weight: 600; }
+
+    button {
+      font: inherit; cursor: pointer; border-radius: 8px; padding: 9px 14px;
+      border: 1px solid var(--border); background: #fff; color: var(--text);
+    }
+    button:hover:not(:disabled) { background: #eef0f8; }
+    button:disabled { opacity: .5; cursor: not-allowed; }
+    button.primary { background: var(--primary); border-color: var(--primary); color: #fff; font-weight: 600; }
+    button.primary:hover:not(:disabled) { background: var(--primary-dark); }
+    button.danger { color: var(--danger); border-color: #f3c4c4; }
+    button.danger:hover:not(:disabled) { background: var(--danger-bg); }
+    button.link { border: none; background: none; color: var(--primary); text-decoration: underline; padding: 4px; }
+
+    :focus-visible { outline: 3px solid #f59e0b; outline-offset: 2px; }
+
+    /* Filtros */
+    .filters { display: flex; gap: 8px; flex-wrap: wrap; }
+    .filters button[aria-pressed="true"] { background: var(--primary); border-color: var(--primary); color: #fff; }
+
+    /* Lista */
+    ul.tasks { list-style: none; margin: 12px 0 0; padding: 0; }
+    .task {
+      display: flex; align-items: center; gap: 12px; padding: 12px 4px;
+      border-bottom: 1px solid var(--border);
+    }
+    .task:last-child { border-bottom: none; }
+    .task input[type="checkbox"] { width: 22px; height: 22px; flex-shrink: 0; cursor: pointer; accent-color: var(--primary); }
+    .task .title { flex: 1; word-break: break-word; cursor: text; }
+    .task.done .title { text-decoration: line-through; color: var(--muted); }
+    .task .actions { display: flex; gap: 6px; flex-shrink: 0; }
+    .task .actions button { padding: 6px 10px; font-size: .9rem; }
+
+    .empty { text-align: center; color: var(--muted); padding: 24px 8px; }
+
+    .list-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 12px; flex-wrap: wrap; gap: 8px; }
+    .counter { color: var(--muted); font-size: .95rem; }
+
+    /* Erro de carregamento */
+    .error-box { background: var(--danger-bg); border: 1px solid #f3c4c4; color: var(--danger); border-radius: var(--radius); padding: 16px; }
+    .error-box p { margin: 0 0 10px; }
+
+    /* Spinner */
+    .spinner {
+      width: 16px; height: 16px; border-radius: 50%;
+      border: 2px solid var(--border); border-top-color: var(--primary);
+      animation: spin .8s linear infinite; display: inline-block;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Avisos (toasts) */
+    .toasts { position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); width: min(92vw, 420px); display: grid; gap: 8px; z-index: 10; }
+    .toast {
+      display: flex; justify-content: space-between; align-items: center; gap: 12px;
+      background: #111827; color: #fff; padding: 12px 14px; border-radius: 10px;
+      box-shadow: 0 6px 20px rgba(0,0,0,.25);
+    }
+    .toast.error { background: var(--danger); }
+    .toast button { background: transparent; color: #fff; border-color: rgba(255,255,255,.5); padding: 4px 10px; }
+    .toast button:hover:not(:disabled) { background: rgba(255,255,255,.15); }
+
+    /* Ajuda */
+    details.help summary { cursor: pointer; font-weight: 600; }
+    details.help ul { margin: 10px 0 0; padding-left: 20px; color: var(--muted); }
+    kbd { background: #eef0f8; border: 1px solid var(--border); border-radius: 4px; padding: 0 6px; font-size: .85rem; }
+
+    @media (prefers-reduced-motion: reduce) { .spinner { animation-duration: 3s; } }
+    @media (max-width: 480px) {
+      .task { flex-wrap: wrap; }
+      .task .actions { width: 100%; justify-content: flex-end; }
+    }
+  </style>
+</head>
+
+<body>
+  <div id="root"></div>
+
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone@7/babel.min.js"></script>
+
+  <script type="text/babel">
+    // =====================================================================
+    // CONFIGURAÇÃO: troque pela URL do seu backend na Vercel depois do deploy.
+    // Exemplo: "https://tarefas-backend.vercel.app"  (sem barra no final)
+    // =====================================================================
+    const API_URL = "https://prova-backend.vercel.app";
+
+    const { useState, useEffect, useRef, useCallback } = React;
+    const MAX_LEN = 120;
+    const UNDO_SECONDS = 5;
+
+    // Camada de acesso à API, com mensagens de erro em linguagem simples (H9)
+    async function api(path, options = {}) {
+      let res;
+      try {
+        res = await fetch(API_URL + path, {
+          headers: { "Content-Type": "application/json" },
+          ...options,
+        });
+      } catch (e) {
+        throw new Error("Não foi possível conectar ao servidor. Verifique sua internet e tente novamente.");
+      }
+      const data = await res.json().catch(() => null);
+      if (!res.ok) throw new Error((data && data.error) || "Algo deu errado. Tente novamente.");
+      return data;
+    }
+
+    function validate(title) {
+      if (!title.trim()) return "Digite um nome para a tarefa.";
+      if (title.trim().length > MAX_LEN) return `Use no máximo ${MAX_LEN} caracteres.`;
+      return "";
+    }
+
+    function App() {
+      const [tasks, setTasks] = useState([]);
+      const [loadState, setLoadState] = useState("loading"); // loading | ready | error
+      const [loadError, setLoadError] = useState("");
+      const [filter, setFilter] = useState("all");
+      const [newTitle, setNewTitle] = useState("");
+      const [formError, setFormError] = useState("");
+      const [editingId, setEditingId] = useState(null);
+      const [editTitle, setEditTitle] = useState("");
+      const [editError, setEditError] = useState("");
+      const [pendingOps, setPendingOps] = useState(0);
+      const [toasts, setToasts] = useState([]);
+      const inputRef = useRef(null);
+      const timers = useRef({});
+
+      // ---------- Avisos (H1: visibilidade do status do sistema) ----------
+      const pushToast = useCallback((message, opts = {}) => {
+        const id = Date.now() + Math.random();
+        setToasts((t) => [...t, { id, message, ...opts }]);
+        if (!opts.sticky) setTimeout(() => dismissToast(id), (opts.seconds || 4) * 1000);
+        return id;
+      }, []);
+      const dismissToast = (id) => setToasts((t) => t.filter((x) => x.id !== id));
+
+      const track = async (fn) => {
+        setPendingOps((n) => n + 1);
+        try { return await fn(); } finally { setPendingOps((n) => n - 1); }
+      };
+
+      // ---------- READ ----------
+      const loadTasks = useCallback(async () => {
+        setLoadState("loading");
+        try {
+          setTasks(await api("/api/tasks"));
+          setLoadState("ready");
+        } catch (e) {
+          setLoadError(e.message);
+          setLoadState("error");
+        }
+      }, []);
+      useEffect(() => { loadTasks(); }, [loadTasks]);
+
+      // ---------- Atalho "/" para focar o campo (H7: eficiência) ----------
+      useEffect(() => {
+        const onKey = (e) => {
+          const tag = (e.target.tagName || "").toLowerCase();
+          if (e.key === "/" && tag !== "input" && tag !== "textarea") {
+            e.preventDefault();
+            inputRef.current && inputRef.current.focus();
+          }
+        };
+        window.addEventListener("keydown", onKey);
+        return () => window.removeEventListener("keydown", onKey);
+      }, []);
+
+      // ---------- CREATE ----------
+      const addTask = async (e) => {
+        e.preventDefault();
+        const err = validate(newTitle);
+        if (err) { setFormError(err); inputRef.current.focus(); return; } // H5 + H9
+        setFormError("");
+        try {
+          const created = await track(() => api("/api/tasks", { method: "POST", body: JSON.stringify({ title: newTitle }) }));
+          setTasks((t) => [...t, created]);
+          setNewTitle("");
+          pushToast("Tarefa adicionada.");
+        } catch (e) {
+          setFormError(e.message);
+        }
+      };
+
+      // ---------- UPDATE (concluir / reabrir) ----------
+      const toggleTask = async (task) => {
+        const next = !task.done;
+        setTasks((t) => t.map((x) => (x.id === task.id ? { ...x, done: next } : x))); // resposta imediata
+        try {
+          await track(() => api(`/api/tasks/${task.id}`, { method: "PUT", body: JSON.stringify({ done: next }) }));
+        } catch (e) {
+          setTasks((t) => t.map((x) => (x.id === task.id ? { ...x, done: task.done } : x)));
+          pushToast(e.message, { type: "error", seconds: 6 });
+        }
+      };
+
+      // ---------- UPDATE (editar título) ----------
+      const startEdit = (task) => { setEditingId(task.id); setEditTitle(task.title); setEditError(""); };
+      const cancelEdit = () => { setEditingId(null); setEditError(""); }; // H3: sair a qualquer momento
+      const saveEdit = async (task) => {
+        const err = validate(editTitle);
+        if (err) { setEditError(err); return; }
+        try {
+          const updated = await track(() => api(`/api/tasks/${task.id}`, { method: "PUT", body: JSON.stringify({ title: editTitle }) }));
+          setTasks((t) => t.map((x) => (x.id === task.id ? updated : x)));
+          setEditingId(null);
+          pushToast("Tarefa atualizada.");
+        } catch (e) {
+          setEditError(e.message);
+        }
+      };
+
+      // ---------- DELETE com opção de desfazer (H3 + H5) ----------
+      const removeTask = (task) => {
+        setTasks((t) => t.filter((x) => x.id !== task.id));
+        if (editingId === task.id) setEditingId(null);
+
+        let toastId;
+        timers.current[task.id] = setTimeout(async () => {
+          delete timers.current[task.id];
+          try {
+            await track(() => api(`/api/tasks/${task.id}`, { method: "DELETE" }));
+          } catch (e) {
+            setTasks((t) => [...t, task].sort((a, b) => a.id - b.id));
+            pushToast("Não foi possível excluir a tarefa. Ela foi restaurada.", { type: "error", seconds: 6 });
+          }
+        }, UNDO_SECONDS * 1000);
+
+        toastId = pushToast(`"${task.title}" foi excluída.`, {
+          seconds: UNDO_SECONDS,
+          action: {
+            label: "Desfazer",
+            run: () => {
+              clearTimeout(timers.current[task.id]);
+              delete timers.current[task.id];
+              setTasks((t) => [...t, task].sort((a, b) => a.id - b.id));
+              dismissToast(toastId);
+            },
+          },
+        });
+      };
+
+      const clearCompleted = async () => {
+        const done = tasks.filter((t) => t.done);
+        if (!window.confirm(`Excluir ${done.length} tarefa(s) concluída(s)? Esta ação não pode ser desfeita.`)) return;
+        try {
+          await track(() => Promise.all(done.map((t) => api(`/api/tasks/${t.id}`, { method: "DELETE" }))));
+          setTasks((t) => t.filter((x) => !x.done));
+          pushToast("Tarefas concluídas excluídas.");
+        } catch (e) {
+          pushToast(e.message, { type: "error", seconds: 6 });
+          loadTasks();
+        }
+      };
+
+      // ---------- Derivados ----------
+      const pending = tasks.filter((t) => !t.done).length;
+      const doneCount = tasks.length - pending;
+      const visible = tasks.filter((t) => filter === "all" ? true : filter === "pending" ? !t.done : t.done);
+      const emptyMessage = tasks.length === 0
+        ? "Você não tem tarefas. Adicione a primeira acima!"
+        : filter === "pending" ? "Tudo concluído por aqui. Bom trabalho!"
+        : "Nenhuma tarefa concluída ainda.";
+
+      return (
+        <div className="app">
+          <header>
+            <h1>📝 Minhas Tarefas</h1>
+            <p className="subtitle">Organize o que precisa ser feito, do seu jeito.</p>
+            {/* H1: status sempre visível */}
+            <div className="status-line" role="status" aria-live="polite">
+              {pendingOps > 0
+                ? <><span className="spinner" aria-hidden="true"></span> Salvando…</>
+                : loadState === "ready" ? "✔ Tudo salvo" : ""}
+            </div>
+          </header>
+
+          <main>
+            <form className="card add-form" onSubmit={addTask} noValidate>
+              <label htmlFor="new-task">Nova tarefa</label>
+              <div className="add-row">
+                <input
+                  id="new-task" ref={inputRef} type="text" value={newTitle} maxLength={MAX_LEN + 20}
+                  placeholder="Ex.: Estudar React por 30 minutos"
+                  className={formError ? "invalid" : ""}
+                  aria-invalid={!!formError} aria-describedby="new-task-msg"
+                  onChange={(e) => { setNewTitle(e.target.value); if (formError) setFormError(""); }}
+                />
+                <button type="submit" className="primary">Adicionar</button>
+              </div>
+              <div id="new-task-msg">
+                {formError
+                  ? <p className="field-error" role="alert">{formError}</p>
+                  : <p className="field-hint">{newTitle.trim().length}/{MAX_LEN} caracteres · Pressione Enter para adicionar</p>}
+              </div>
+            </form>
+
+            <section className="card" aria-label="Lista de tarefas">
+              <div className="filters" role="group" aria-label="Filtrar tarefas">
+                {[["all", "Todas", tasks.length], ["pending", "Pendentes", pending], ["done", "Concluídas", doneCount]].map(([key, label, n]) => (
+                  <button key={key} aria-pressed={filter === key} onClick={() => setFilter(key)}>{label} ({n})</button>
+                ))}
+              </div>
+
+              {loadState === "loading" && (
+                <p className="empty"><span className="spinner" aria-hidden="true"></span> Carregando suas tarefas… (na primeira visita o servidor pode levar alguns segundos)</p>
+              )}
+
+              {loadState === "error" && (
+                <div className="error-box" role="alert" style={{ marginTop: 12 }}>
+                  <p><strong>Não conseguimos carregar suas tarefas.</strong></p>
+                  <p>{loadError}</p>
+                  <button onClick={loadTasks}>Tentar novamente</button>
+                </div>
+              )}
+
+              {loadState === "ready" && (
+                <>
+                  {visible.length === 0 ? <p className="empty">{emptyMessage}</p> : (
+                    <ul className="tasks">
+                      {visible.map((task) => (
+                        <li key={task.id} className={"task" + (task.done ? " done" : "")}>
+                          {editingId === task.id ? (
+                            <div style={{ flex: 1 }}>
+                              <div className="add-row">
+                                <input
+                                  type="text" autoFocus value={editTitle} aria-label="Editar nome da tarefa"
+                                  className={editError ? "invalid" : ""}
+                                  onChange={(e) => { setEditTitle(e.target.value); setEditError(""); }}
+                                  onKeyDown={(e) => { if (e.key === "Enter") saveEdit(task); if (e.key === "Escape") cancelEdit(); }}
+                                />
+                                <button className="primary" onClick={() => saveEdit(task)}>Salvar</button>
+                                <button onClick={cancelEdit}>Cancelar</button>
+                              </div>
+                              {editError && <p className="field-error" role="alert">{editError}</p>}
+                            </div>
+                          ) : (
+                            <>
+                              <input
+                                type="checkbox" checked={task.done} onChange={() => toggleTask(task)}
+                                aria-label={`${task.done ? "Reabrir" : "Concluir"} tarefa: ${task.title}`}
+                              />
+                              <span className="title" title="Dê dois cliques para editar" onDoubleClick={() => startEdit(task)}>
+                                {task.title}
+                              </span>
+                              <div className="actions">
+                                <button onClick={() => startEdit(task)} aria-label={`Editar tarefa: ${task.title}`}>✏️ Editar</button>
+                                <button className="danger" onClick={() => removeTask(task)} aria-label={`Excluir tarefa: ${task.title}`}>🗑️ Excluir</button>
+                              </div>
+                            </>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+
+                  <div className="list-footer">
+                    <span className="counter">
+                      {pending === 0 ? "Nenhuma tarefa pendente" : `${pending} ${pending === 1 ? "tarefa pendente" : "tarefas pendentes"}`}
+                    </span>
+                    {doneCount > 0 && <button className="danger" onClick={clearCompleted}>Excluir concluídas</button>}
+                  </div>
+                </>
+              )}
+            </section>
+
+            {/* H10: ajuda e documentação */}
+            <details className="card help">
+              <summary>Ajuda e atalhos</summary>
+              <ul>
+                <li>Marque a caixinha para concluir uma tarefa; desmarque para reabrir.</li>
+                <li>Dê <strong>dois cliques</strong> no texto (ou use “Editar”) para mudar o nome.</li>
+                <li>Excluiu sem querer? Use <strong>Desfazer</strong> no aviso que aparece por {UNDO_SECONDS} segundos.</li>
+                <li><kbd>/</kbd> vai direto para o campo de nova tarefa.</li>
+                <li><kbd>Enter</kbd> salva · <kbd>Esc</kbd> cancela a edição.</li>
+              </ul>
+            </details>
+          </main>
+
+          <div className="toasts" aria-live="polite">
+            {toasts.map((t) => (
+              <div key={t.id} className={"toast" + (t.type === "error" ? " error" : "")} role={t.type === "error" ? "alert" : "status"}>
+                <span>{t.message}</span>
+                {t.action && <button onClick={t.action.run}>{t.action.label}</button>}
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+  </script>
+</body>
+</html>
